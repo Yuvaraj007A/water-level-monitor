@@ -203,8 +203,6 @@ Mobile application
 
 SMS / WhatsApp alerts
 
-Automatic water pump control
-
 Historical water usage analytics
 
 Multiple tank monitoring
@@ -234,21 +232,3 @@ Ethical Hacking Enthusiast
 This project is licensed under the MIT License.
 
 ---
-
-✅ Now you can:
-
-1. Open your **GitHub repository**
-2. Click **Add file → Create new file**
-3. Name it **README.md**
-4. **Paste this entire content**
-5. Click **Commit changes**
-
----
-
-If you want, I can also help you add **3 things that make your GitHub repo look extremely professional**:
-
-- ⭐ **ESP32 circuit diagram**
-- ⭐ **live data flow diagram**
-- ⭐ **beautiful project banner**
-
-It will make your repo look like a **real IoT product project**.
