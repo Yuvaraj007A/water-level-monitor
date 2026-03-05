@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import api from '../services/api';
+import LoadingScreen from '../components/LoadingScreen';
 import { Calendar, BarChart2, TrendingUp } from 'lucide-react';
 
 const Analytics = () => {
@@ -62,7 +63,7 @@ const Analytics = () => {
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div></div>
+        <LoadingScreen />
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {/* Main Chart */}

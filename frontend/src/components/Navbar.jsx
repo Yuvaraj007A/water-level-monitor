@@ -19,12 +19,12 @@ const Navbar = () => {
                     <div className="bg-primary/20 p-2 rounded-xl group-hover:bg-primary/30 transition-colors">
                         <Droplet className="text-accent" size={24} />
                     </div>
-                    AquaSmart
+                    HydroGuard
                 </Link>
 
                 {user ? (
                     <div className="flex items-center gap-6">
-                        <Link to="/" className="text-gray-300 hover:text-white flex items-center gap-2 transition-colors">
+                        <Link to="/dashboard" className="text-gray-300 hover:text-white flex items-center gap-2 transition-colors">
                             <LayoutDashboard size={18} /> <span className="hidden sm:inline">Dashboard</span>
                         </Link>
                         <Link to="/analytics" className="text-gray-300 hover:text-white flex items-center gap-2 transition-colors">
@@ -43,6 +43,7 @@ const Navbar = () => {
                     </div>
                 ) : (
                     <div className="flex gap-4">
+                        <Link to="/" className="px-5 py-2 text-gray-300 hover:text-white font-medium transition-colors">Home</Link>
                         <Link to="/login" className="px-5 py-2 text-gray-300 hover:text-white font-medium transition-colors">Login</Link>
                         <Link to="/register" className="px-5 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 font-medium shadow-lg shadow-blue-500/20 transition-all">Sign Up</Link>
                     </div>
