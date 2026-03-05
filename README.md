@@ -228,13 +228,13 @@ ESP32 will periodically send water level data to the backend.
 ---
 ### 🔌 Hardware Circuit
 
-| Ultrasonic Sensor | ESP32 |
-|------------------|------|
-| VCC | 5V |
-| GND | GND |
-| TRIG | GPIO 5 |
-| ECHO | GPIO 18 |
-
+| Ultrasonic Sensor | ESP32   |
+|-------------------|---------|
+| VCC               | 5V      |
+| GND               | GND     |
+| TRIG              | GPIO 5  |
+| ECHO              | GPIO 18 |
+|-------------------|---------|
 ---
 
 🔗 API Documentation
