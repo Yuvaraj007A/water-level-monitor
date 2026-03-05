@@ -79,8 +79,76 @@ Ultrasonic Sensor │ ▼ ESP32 (WiFi Enabled) │ HTTP POST Request │ ▼ Exp
 
 # 📁 Project Structure
 
-water-level-monitor │ ├── esp32 │   └── water_level_monitor.ino │ ├── backend │   ├── server.js │   ├── routes │   │   └── tankRoutes.js │   ├── models │   │   └── Tank.js │   └── config │       └── db.js │ ├── frontend │   ├── src │   │   ├── components │   │   ├── pages │   │   └── App.jsx │   └── vite.config.js │ ├── screenshots │   ├── login.png │   └── dashboard.png │ └── README.md
-
+water-level-monitoring-system
+│
+├── esp32
+│   ├── water_level_monitor.ino
+│   └── config.h
+│
+├── backend
+│   ├── config
+│   │   └── db.js
+│   │
+│   ├── controllers
+│   │   └── tankController.js
+│   │
+│   ├── models
+│   │   └── Tank.js
+│   │
+│   ├── routes
+│   │   └── tankRoutes.js
+│   │
+│   ├── middleware
+│   │   └── errorMiddleware.js
+│   │
+│   ├── utils
+│   │   └── tankCalculator.js
+│   │
+│   ├── server.js
+│   ├── package.json
+│   └── .env
+│
+├── frontend
+│   ├── public
+│   │   └── favicon.ico
+│   │
+│   ├── src
+│   │   ├── api
+│   │   │   └── tankApi.js
+│   │   │
+│   │   ├── components
+│   │   │   ├── TankCard.jsx
+│   │   │   ├── Navbar.jsx
+│   │   │   └── StatusIndicator.jsx
+│   │   │
+│   │   ├── pages
+│   │   │   ├── Dashboard.jsx
+│   │   │   └── Login.jsx
+│   │   │
+│   │   ├── context
+│   │   │   └── AuthContext.jsx
+│   │   │
+│   │   ├── styles
+│   │   │   └── global.css
+│   │   │
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   │
+│   ├── vite.config.js
+│   ├── package.json
+│   └── .env
+│
+├── screenshots
+│   ├── dashboard.png
+│   └── login.png
+│
+├── docs
+│   ├── architecture.png
+│   └── circuit-diagram.png
+│
+├── README.md
+├── .gitignore
+└── LICENSE
 ---
 
 # ⚙️ Installation Guide
