@@ -78,7 +78,7 @@ Ultrasonic Sensor │ ▼ ESP32 (WiFi Enabled) │ HTTP POST Request │ ▼ Exp
 ---
 
 # 📁 Project Structure
-
+'''
 water-level-monitoring-system
 │
 ├── esp32
@@ -149,6 +149,7 @@ water-level-monitoring-system
 ├── README.md
 ├── .gitignore
 └── LICENSE
+'''
 ---
 
 # ⚙️ Installation Guide
