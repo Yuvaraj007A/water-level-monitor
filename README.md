@@ -1,1 +1,254 @@
-# water-level-monitor
+# 💧 Smart Water Level Monitoring System
+
+![IoT](https://img.shields.io/badge/IoT-ESP32-blue)
+![React](https://img.shields.io/badge/Frontend-React-blue)
+![Node](https://img.shields.io/badge/Backend-Node.js-green)
+![MongoDB](https://img.shields.io/badge/Database-MongoDB-green)
+![License](https://img.shields.io/badge/License-MIT-orange)
+
+A **full-stack IoT system** that monitors the **water level of overhead tanks in real time** using **ESP32 and an Ultrasonic Sensor**, with a **React web dashboard** and **MongoDB Atlas cloud database**.
+
+The ESP32 measures the water level and sends the data to a backend API. The backend stores it in MongoDB Atlas and the **web dashboard displays the tank status in real time**.
+
+---
+
+# 🌐 Live Demo
+
+Dashboard:  
+https://water-level-monitor-sandy.vercel.app
+
+---
+
+# 📸 Screenshots
+
+## Login Page
+![Login Screenshot](screenshots/login.png)
+
+## Dashboard
+![Dashboard Screenshot](screenshots/dashboard.png)
+
+---
+
+# 🏗 System Architecture
+
+Ultrasonic Sensor │ ▼ ESP32 (WiFi Enabled) │ HTTP POST Request │ ▼ Express.js API │ ▼ MongoDB Atlas │ ▼ React Dashboard
+
+---
+
+# 🚀 Features
+
+- Real-time water level monitoring
+- ESP32 WiFi data transmission
+- React web dashboard
+- Cloud database using MongoDB Atlas
+- Tank ID based monitoring
+- REST API integration
+- Deployed frontend using Vercel
+- Expandable IoT architecture
+
+---
+
+# 🧰 Tech Stack
+
+## Hardware
+
+- ESP32
+- HC-SR04 Ultrasonic Sensor
+- Jumper wires
+- Water tank
+
+## Software
+
+### Frontend
+- React (Vite)
+- Axios
+- CSS / Tailwind
+
+### Backend
+- Node.js
+- Express.js
+- MongoDB Atlas
+- Mongoose
+
+### IoT Firmware
+- Arduino IDE
+- ESP32 WiFi Library
+- HTTPClient
+
+---
+
+# 📁 Project Structure
+
+water-level-monitor │ ├── esp32 │   └── water_level_monitor.ino │ ├── backend │   ├── server.js │   ├── routes │   │   └── tankRoutes.js │   ├── models │   │   └── Tank.js │   └── config │       └── db.js │ ├── frontend │   ├── src │   │   ├── components │   │   ├── pages │   │   └── App.jsx │   └── vite.config.js │ ├── screenshots │   ├── login.png │   └── dashboard.png │ └── README.md
+
+---
+
+# ⚙️ Installation Guide
+
+## 1️⃣ Clone Repository
+
+```bash
+git clone https://github.com/yourusername/water-level-monitor.git
+cd water-level-monitor
+
+
+---
+
+🔧 Backend Setup
+
+Navigate to backend folder
+
+cd backend
+
+Install dependencies
+
+npm install
+
+Create .env file
+
+PORT=5000
+MONGO_URI=your_mongodb_connection_string
+
+Start backend server
+
+npm run dev
+
+Server will run at
+
+http://localhost:5000
+
+
+---
+
+💻 Frontend Setup
+
+Navigate to frontend
+
+cd frontend
+
+Install dependencies
+
+npm install
+
+Run development server
+
+npm run dev
+
+Frontend runs at
+
+http://localhost:5173
+
+
+---
+
+📡 ESP32 Setup
+
+Upload the ESP32 code using Arduino IDE.
+
+Update the following values:
+
+const char* ssid = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+String apiUrl = "http://YOUR_SERVER_IP:5000/api/tank/update";
+String tankId = "tank_01";
+
+ESP32 will periodically send water level data to the backend.
+
+
+---
+
+🔌 Hardware Circuit
+
+Ultrasonic Sensor	ESP32
+
+VCC	5V
+GND	GND
+TRIG	GPIO 5
+ECHO	GPIO 18
+
+
+
+---
+
+🔗 API Documentation
+
+Update Tank Level
+
+Endpoint
+
+POST /api/tank/update
+
+Example Request
+
+{
+  "tankId": "tank_01",
+  "level": 78,
+  "distance": 22
+}
+
+Example Response
+
+{
+  "status": "success",
+  "message": "Tank level updated"
+}
+
+
+---
+
+📊 Future Improvements
+
+Mobile application
+
+SMS / WhatsApp alerts
+
+Automatic water pump control
+
+Historical water usage analytics
+
+Multiple tank monitoring
+
+MQTT real-time data streaming
+
+
+
+---
+
+👨‍💻 Author
+
+A. Yuvaraj
+
+IoT Developer
+
+Full Stack Developer
+
+Ethical Hacking Enthusiast
+
+
+
+---
+
+📜 License
+
+This project is licensed under the MIT License.
+
+---
+
+✅ Now you can:
+
+1. Open your **GitHub repository**
+2. Click **Add file → Create new file**
+3. Name it **README.md**
+4. **Paste this entire content**
+5. Click **Commit changes**
+
+---
+
+If you want, I can also help you add **3 things that make your GitHub repo look extremely professional**:
+
+- ⭐ **ESP32 circuit diagram**
+- ⭐ **live data flow diagram**
+- ⭐ **beautiful project banner**
+
+It will make your repo look like a **real IoT product project**.
