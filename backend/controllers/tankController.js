@@ -1,5 +1,6 @@
 const Tank = require('../models/Tank');
 const Log = require('../models/Log');
+const mqttClient = require('../config/mqtt');
 
 // @desc    Get user's tank details
 // @route   GET /api/tank
@@ -63,6 +64,9 @@ const toggleMotor = async (req, res) => {
             level: tank.currentLevel,
             motorStatus: tank.motorStatus
         });
+
+        // Publish to MQTT to let ESP32 know instantly
+        mqttClient.publish(`watermonitor/tank/${tank._id}/motor`, tank.motorStatus);
 
         res.json(tank);
     } catch (error) {

@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const connectDB = require('./config/db');
+require('./config/mqtt'); // Initialize MQTT client
 
 const authRoutes = require('./routes/authRoutes');
 const tankRoutes = require('./routes/tankRoutes');

@@ -29,13 +29,20 @@ export const AuthProvider = ({ children }) => {
         return data;
     };
 
+    const updateProfile = async (name, password) => {
+        const { data } = await api.put('/auth/profile', { name, password });
+        localStorage.setItem('user', JSON.stringify(data));
+        setUser(data);
+        return data;
+    };
+
     const logout = () => {
         localStorage.removeItem('user');
         setUser(null);
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, register, logout, updateProfile, loading }}>
             {!loading && children}
         </AuthContext.Provider>
     );

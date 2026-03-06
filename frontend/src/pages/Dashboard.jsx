@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import api from '../services/api';
+import { AuthContext } from '../context/AuthContext';
 import TankVisualizer from '../components/TankVisualizer';
 import LoadingScreen from '../components/LoadingScreen';
 import { Activity, Beaker, Clock, Power, Settings, RefreshCw, AlertTriangle } from 'lucide-react';
 
 const Dashboard = () => {
+    const { user } = useContext(AuthContext);
     const [tankData, setTankData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -60,6 +62,7 @@ const Dashboard = () => {
             {/* Header Section */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
+                    <h2 className="text-xl text-primary font-medium mb-1">Welcome, {user?.name}</h2>
                     <h1 className="text-3xl font-bold text-white tracking-tight">System Status</h1>
                     <p className="text-gray-400 flex items-center gap-2 mt-1">
                         <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
@@ -157,9 +160,9 @@ const Dashboard = () => {
                         <code className="text-primary font-mono text-lg">{tankData._id}</code>
                     </div>
                     <div className="bg-black/40 p-4 rounded-xl border border-white/10 relative group">
-                        <p className="text-sm text-gray-400 mb-1">API URL</p>
+                        <p className="text-sm text-gray-400 mb-1">MQTT Broker</p>
                         <code className="text-green-400 font-mono text-lg break-all">
-                            {(import.meta.env.VITE_API_URL || 'http://localhost:5000/api')}
+                            broker.hivemq.com (Port 1883)
                         </code>
                     </div>
                 </div>

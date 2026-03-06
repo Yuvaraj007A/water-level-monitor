@@ -8,7 +8,7 @@ const LoadingScreen = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background overflow-hidden"
+            className="fixed inset-0 top-0 left-0 w-screen h-screen z-[999999] flex flex-col items-center justify-center bg-background overflow-hidden"
         >
             {/* Background Ripple Effects */}
             <div className="absolute inset-0 z-0">

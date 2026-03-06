@@ -1,17 +1,20 @@
 #include <ArduinoJson.h>
-#include <HTTPClient.h>
 #include <Preferences.h>
+#include <PubSubClient.h>
 #include <WebServer.h>
 #include <WiFi.h>
+
 
 // Initialize WebServer on port 80 and Non-Volatile Storage (Preferences)
 WebServer server(80);
 Preferences preferences;
+WiFiClient espClient;
+PubSubClient mqttClient(espClient);
 
 // Configuration Variables
 String ssid = "";
 String password = "";
-String apiUrl = "";
+String mqttServer = "";
 String tankId = "";
 const char *apiKey = "esp32-secret-key-999";
 
@@ -31,13 +34,17 @@ float distanceCm;
 bool configMode = false;
 unsigned long lastReadingTime = 0;
 
+// MQTT Topics automatically generated from tankId
+String publishTopic = "";
+String subscribeTopic = "";
+
 // ==========================================
 // ADMIN DASHBOARD HTML
 // ==========================================
 void handleRoot() {
   String html = "<!DOCTYPE html><html><head><meta name=\"viewport\" "
                 "content=\"width=device-width, initial-scale=1\">";
-  html += "<title>ESP32 Admin Dashboard</title>";
+  html += "<title>ESP32 Admin Dashboard (MQTT)</title>";
   html += "<style>";
   html += "body { font-family: 'Segoe UI', Arial, sans-serif; "
           "background-color: #0f172a; color: #f8fafc; margin: 0; padding: "
@@ -64,9 +71,9 @@ void handleRoot() {
   html += "<label>WiFi Password</label><input type=\"password\" "
           "name=\"password\" placeholder=\"***\" value=\"" +
           password + "\">";
-  html += "<label>Backend API URL</label><input type=\"text\" name=\"apiUrl\" "
-          "placeholder=\"http://192.168.x.x:5000/api/tank/update\" value=\"" +
-          apiUrl + "\">";
+  html += "<label>MQTT Broker</label><input type=\"text\" name=\"mqttServer\" "
+          "placeholder=\"broker.hivemq.com\" value=\"" +
+          mqttServer + "\">";
   html += "<label>Tank ID (MongoDB)</label><input type=\"text\" "
           "name=\"tankId\" placeholder=\"Paste Tank ID here...\" value=\"" +
           tankId + "\">";
@@ -84,8 +91,8 @@ void handleSave() {
     preferences.putString("ssid", server.arg("ssid"));
   if (server.hasArg("password"))
     preferences.putString("password", server.arg("password"));
-  if (server.hasArg("apiUrl"))
-    preferences.putString("apiUrl", server.arg("apiUrl"));
+  if (server.hasArg("mqttServer"))
+    preferences.putString("mqttServer", server.arg("mqttServer"));
   if (server.hasArg("tankId"))
     preferences.putString("tankId", server.arg("tankId"));
 
@@ -98,6 +105,52 @@ void handleSave() {
 
   delay(1000); // Give the browser time to receive the page
   ESP.restart();
+}
+
+// ==========================================
+// MQTT CALLBACK (When message arrives)
+// ==========================================
+void mqttCallback(char *topic, byte *payload, unsigned int length) {
+  String message = "";
+  for (int i = 0; i < length; i++) {
+    message += (char)payload[i];
+  }
+
+  Serial.print("Message arrived on topic: ");
+  Serial.print(topic);
+  Serial.print(". Message: ");
+  Serial.println(message);
+
+  if (String(topic) == subscribeTopic) {
+    if (message == "ON") {
+      digitalWrite(relayPin, HIGH); // Motor ON
+      Serial.println("Motor turned ON via MQTT");
+    } else if (message == "OFF") {
+      digitalWrite(relayPin, LOW); // Motor OFF
+      Serial.println("Motor turned OFF via MQTT");
+    }
+  }
+}
+
+// ==========================================
+// MQTT RECONNECT
+// ==========================================
+void reconnectMQTT() {
+  while (!mqttClient.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    String clientId = "ESP32Client-" + String(random(0xffff), HEX);
+    if (mqttClient.connect(clientId.c_str())) {
+      Serial.println("connected");
+      // Subscribe to the commands topic
+      mqttClient.subscribe(subscribeTopic.c_str());
+      Serial.println("Subscribed to: " + subscribeTopic);
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(mqttClient.state());
+      Serial.println(" try again in 5 seconds");
+      delay(5000);
+    }
+  }
 }
 
 // ==========================================
@@ -120,8 +173,13 @@ void setup() {
   preferences.begin("app-config", false);
   ssid = preferences.getString("ssid", "");
   password = preferences.getString("password", "");
-  apiUrl = preferences.getString("apiUrl", "");
+  mqttServer = preferences.getString("mqttServer", "");
   tankId = preferences.getString("tankId", "");
+
+  // Fallback to defaults to help user if not configured
+  if (mqttServer == "") {
+    mqttServer = "broker.hivemq.com";
+  }
 
   // If there's no SSID saved OR the BOOT button is held down while turning on
   if (ssid == "" || digitalRead(configPin) == LOW) {
@@ -166,6 +224,13 @@ void setup() {
 
     Serial.println("\nConnected to WiFi!");
     Serial.println("IP Address: " + WiFi.localIP().toString());
+
+    // Setup MQTT
+    publishTopic = "watermonitor/tank/" + tankId + "/level";
+    subscribeTopic = "watermonitor/tank/" + tankId + "/motor";
+
+    mqttClient.setServer(mqttServer.c_str(), 1883);
+    mqttClient.setCallback(mqttCallback);
   }
 }
 
@@ -188,6 +253,12 @@ void loop() {
     return;
   }
 
+  // MQTT Client Keep Alive
+  if (!mqttClient.connected()) {
+    reconnectMQTT();
+  }
+  mqttClient.loop();
+
   // Non-blocking timer: Run logic every 5 seconds
   if (millis() - lastReadingTime >= 5000) {
     lastReadingTime = millis();
@@ -206,39 +277,18 @@ void loop() {
     Serial.print("Distance (cm): ");
     Serial.println(distanceCm);
 
-    // Send HTTP POST
-    HTTPClient http;
-    http.begin(apiUrl);
-    http.addHeader("Content-Type", "application/json");
-    http.addHeader("x-api-key", apiKey);
-
+    // Publish level to MQTT Topic
     StaticJsonDocument<200> doc;
-    doc["tankId"] = tankId;
+    doc["apiKey"] = apiKey;
     doc["distance"] = distanceCm;
 
     String requestBody;
     serializeJson(doc, requestBody);
 
-    int httpResponseCode = http.POST(requestBody);
-
-    if (httpResponseCode > 0) {
-      String payload = http.getString();
-      Serial.println("HTTP " + String(httpResponseCode) +
-                     " Response: " + payload);
-
-      StaticJsonDocument<200> responseDoc;
-      if (!deserializeJson(responseDoc, payload)) {
-        String motorStatus = responseDoc["motorStatus"].as<String>();
-        if (motorStatus == "ON") {
-          digitalWrite(relayPin, HIGH); // Motor ON
-        } else {
-          digitalWrite(relayPin, LOW); // Motor OFF
-        }
-      }
+    if (mqttClient.publish(publishTopic.c_str(), requestBody.c_str())) {
+      Serial.println("Published level reading to MQTT");
     } else {
-      Serial.println("HTTP Error: " + String(httpResponseCode));
+      Serial.println("Failed to publish reading");
     }
-
-    http.end();
   }
 }
