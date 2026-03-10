@@ -1,16 +1,49 @@
-# React + Vite
+# 💧 Smart Water Level Monitoring System - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the React frontend for the **Smart Water Level Monitoring System**. It provides a real-time dashboard to monitor water levels sent by the ESP32 IoT device.
 
-Currently, two official plugins are available:
+## 🚀 Built With
+- **React (Vite)**: Fast and modern frontend library
+- **Tailwind CSS**: Utility-first CSS framework for styling
+- **Axios**: Promised-based HTTP client for API requests
+- **Lucide React**: Beautiful iconography
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ Features
+- **Real-Time Dashboard**: See live water levels from monitored tanks.
+- **Responsive Layout**: Designed to work smoothly on both desktop and mobile devices.
+- **REST API Integration**: Connects with the Node/Express backend to fetch current level data.
 
-## React Compiler
+## ⚙️ Usage
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Prerequisites
+- Node.js (v16 or higher)
+- NPM or Yarn
+- The backend API must be running (see the `backend` folder setup instructions).
 
-## Expanding the ESLint configuration
+### Installation
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install the necessary dependencies:
+   ```bash
+   npm install
+   ```
+3. Create a `.env` file in the root of the `frontend` folder (if needed):
+   ```env
+   VITE_API_URL=http://localhost:5000/api
+   ```
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+The application will typically be accessible at `http://localhost:5173`.
+
+## 📁 File Structure
+
+- `src/components`: UI components like Navbar and Tank cards.
+- `src/pages`: Top-level views (e.g., Dashboard, Login).
+- `src/api`: Configuration and setup for Axios calls.
+- `src/styles`: Global CSS (Tailwind configurations).
