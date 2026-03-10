@@ -19,9 +19,14 @@ const logSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     }
-}, { timestamps: true });
-
-// Optimized index for fast analytics querying
-logSchema.index({ tankId: 1, timestamp: -1 });
+}, {
+    // 🚀 SCALE OPTIMIZATION: Convert to Native MongoDB Time-Series Collection
+    // This allows millions of fast IoT sensor inserts and compacts storage on-disk instantly.
+    timeseries: {
+        timeField: 'timestamp',
+        metaField: 'tankId',
+        granularity: 'seconds'
+    }
+});
 
 module.exports = mongoose.model('Log', logSchema);

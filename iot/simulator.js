@@ -1,50 +1,66 @@
 // Simulated variables based on ESP32 code
-const apiUrl = "http://localhost:5000/api/tank/update"; // using localhost for simulator
+const mqtt = require('mqtt');
+const mqttServer = "mqtt://broker.hivemq.com";
 const apiKey = "esp32-secret-key-999";
 const tankId = "60d5ecb8b392d71500000000"; // Dummy ID, replace with actual if backend strictly checks
+
+const publishTopic = `watermonitor/tank/${tankId}/level`;
+const subscribeTopic = `watermonitor/tank/${tankId}/motor`;
+
+const client = mqtt.connect(mqttServer);
+
+client.on('connect', () => {
+    console.log("Connected to MQTT Broker:", mqttServer);
+    client.subscribe(subscribeTopic, (err) => {
+        if (!err) {
+            console.log("Subscribed to topic:", subscribeTopic);
+        } else {
+            console.log("Failed to subscribe:", err);
+        }
+    });
+
+    // Start simulation when connected
+    runSimulator();
+});
+
+client.on('message', (topic, message) => {
+    console.log(`\n[MQTT] Message arrived on topic: ${topic}. Message: ${message.toString()}`);
+    if (topic === subscribeTopic) {
+        const msg = message.toString();
+        if (msg === "ON") {
+            console.log("Motor turned ON via MQTT");
+            console.log("[Hardware Override] Relay PIN set to HIGH (Motor ON)");
+        } else if (msg === "OFF") {
+            console.log("Motor turned OFF via MQTT");
+            console.log("[Hardware Override] Relay PIN set to LOW (Motor OFF)");
+        }
+    }
+});
+
+client.on('error', (err) => {
+    console.log("MQTT Error:", err);
+});
 
 // Simulates the loop() output
 async function loop(distanceCm) {
     console.log(`\nDistance (cm): ${distanceCm}`);
 
-    try {
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey
-            },
-            body: JSON.stringify({
-                tankId: tankId,
-                distance: distanceCm
-            })
-        });
+    const payload = JSON.stringify({
+        apiKey: apiKey,
+        distance: distanceCm
+    });
 
-        const data = await response.json().catch(() => null);
-
-        console.log(`HTTP Response code: ${response.status}`);
-        if (data) console.log(JSON.stringify(data));
-
-        if (response.ok && data) {
-            // Parse response to control virtual relay
-            const motorStatus = data.motorStatus;
-            if (motorStatus) {
-                if (motorStatus === "ON") {
-                    console.log("[Hardware Override] Relay PIN set to HIGH (Motor ON)");
-                } else {
-                    console.log("[Hardware Override] Relay PIN set to LOW (Motor OFF)");
-                }
-            }
+    client.publish(publishTopic, payload, (err) => {
+        if (err) {
+            console.log("Failed to publish reading:", err);
         } else {
-            console.log(`Error Response:`, data);
+            console.log(`Published level reading to MQTT`);
         }
-    } catch (error) {
-        console.log(`Error code: ${error.message}`);
-    }
+    });
 }
 
 async function runSimulator() {
-    console.log("Starting ESP32 Simulator...");
+    console.log("Starting ESP32 Simulator (MQTT Mode)...");
     console.log("Simulating WiFi Connection...");
     console.log("Connected to WiFi network with IP Address: 192.168.1.100\n");
 
@@ -54,9 +70,7 @@ async function runSimulator() {
     for (let i = 0; i < distances.length; i++) {
         await loop(distances[i]);
         // Simulate delay(5000)
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
     }
-    console.log("\nSimulator finished.");
+    console.log("\nSimulator finished sending readings. Listening for incoming MQTT messages...");
 }
-
-runSimulator();

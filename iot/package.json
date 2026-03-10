@@ -1,0 +1,16 @@
+{
+  "name": "iot",
+  "version": "1.0.0",
+  "description": "The `iot` directory bridges the physical **esp32 hardware** to the cloud system. This folder contains the raw C++ Arduino codebase driving the ultrasonic sensors (`esp32_example.ino`) alongside a Node.js utility script (`simulator.js`) for rapid mocked development bypassing physical dependency.",
+  "main": "simulator.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "mqtt": "^5.15.0"
+  }
+}
