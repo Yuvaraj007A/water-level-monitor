@@ -1,300 +1,148 @@
-# 💧 Smart Water Level Monitoring System
+<div align="center">
+  <img src="https://img.shields.io/badge/IoT-ESP32-blue?style=for-the-badge&logo=espressif" alt="IoT" />
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white" alt="Node" />
+  <img src="https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind" />
+  <img src="https://img.shields.io/badge/MQTT-660066?style=for-the-badge&logo=mqtt&logoColor=white" alt="MQTT" />
+</div>
 
-![IoT](https://img.shields.io/badge/IoT-ESP32-blue)
-![React](https://img.shields.io/badge/Frontend-React-blue)
-![Node](https://img.shields.io/badge/Backend-Node.js-green)
-![MongoDB](https://img.shields.io/badge/Database-MongoDB-green)
-![License](https://img.shields.io/badge/License-MIT-orange)
+<h1 align="center">💧 Smart Water Level Monitoring System</h1>
 
-A **full-stack IoT system** that monitors the **water level of overhead tanks in real time** using **ESP32 and an Ultrasonic Sensor**, with a **React web dashboard** and **MongoDB Atlas cloud database**.
-
-The ESP32 measures the water level and sends the data to a backend API. The backend stores it in MongoDB Atlas and the **web dashboard displays the tank status in real time**.
-
----
-
-# 🌐 Live Demo
-
-Dashboard:  
-https://water-level-monitor-sandy.vercel.app
+<p align="center">
+  A <strong>full-stack, real-time IoT monitoring system</strong> built to measure the water levels of overhead tanks using an <strong>ESP32 Microcontroller</strong> and an <strong>Ultrasonic Sensor</strong>. It includes a <strong>React UI Dashboard</strong>, an <strong>Express API Backend</strong>, and an <strong>MQTT broker</strong> integration.
+</p>
 
 ---
 
-# 📸 Screenshots
+## 🌐 Live Demo & Deployment
 
-## Login Page
-![Login Screenshot](screenshots/login.png)
-
-## Dashboard
-![Dashboard Screenshot](screenshots/dashboard.png)
+- **Frontend Dashboard:** [https://water-level-monitor-sandy.vercel.app](https://water-level-monitor-sandy.vercel.app)
+- The frontend is deployed automatically using Vercel. 
+- Ensure that the backend is hosted on a service like Render or Heroku and properly linked via environment variables.
 
 ---
 
-# 🏗 System Architecture
+## 🏗 System Architecture
 
-Ultrasonic Sensor │ ▼ ESP32 (WiFi Enabled) │ HTTP POST Request │ ▼ Express.js API │ ▼ MongoDB Atlas │ ▼ React Dashboard
+The project is split into three main modules:
+1. **IoT Edge Node (`iot/`)**: ESP32 C++ firmware querying an HC-SR04 ultrasonic sensor to calculate real-world tank fill capacity and making HTTP REST API / MQTT updates.
+2. **Backend Server (`backend/`)**: Node/Express server parsing the real-time IoT data, executing motor control directives (ON/OFF logic), and saving logs to a **MongoDB Atlas** database.
+3. **Frontend Application (`frontend/`)**: Modern React SPA displaying interactive analytics charts (Recharts), dynamic animations (Framer Motion), and live tank fill states.
 
----
-
-# 🚀 Features
-
-- Real-time water level monitoring
-- ESP32 WiFi data transmission
-- React web dashboard
-- Cloud database using MongoDB Atlas
-- Tank ID based monitoring
-- REST API integration
-- Deployed frontend using Vercel
-- Expandable IoT architecture
-
----
-
-# 🧰 Tech Stack
-
-## Hardware
-
-- ESP32
-- HC-SR04 Ultrasonic Sensor
-- Jumper wires
-- Water tank
-
-## Software
-
-### Frontend
-- React (Vite)
-- Axios
-- CSS / Tailwind
-
-### Backend
-- Node.js
-- Express.js
-- MongoDB Atlas
-- Mongoose
-
-### IoT Firmware
-- Arduino IDE
-- ESP32 WiFi Library
-- HTTPClient
-
----
-
-# 📁 Project Structure
+```mermaid
+graph LR
+    A[Ultrasonic Sensor] -->|Distance Data| B(ESP32)
+    B -->|HTTP POST / MQTT| C{Node.js API}
+    C -->|Read/Write| D[(MongoDB)]
+    C <-->|REST/JSON| E[React Dashboard]
 ```
-water-level-monitoring-system
-│
-├── esp32
-│   ├── water_level_monitor.ino
-│   └── config.h
-│
-├── backend
-│   ├── config
-│   │   └── db.js
-│   │
-│   ├── controllers
-│   │   └── tankController.js
-│   │
-│   ├── models
-│   │   └── Tank.js
-│   │
-│   ├── routes
-│   │   └── tankRoutes.js
-│   │
-│   ├── middleware
-│   │   └── errorMiddleware.js
-│   │
-│   ├── utils
-│   │   └── tankCalculator.js
-│   │
-│   ├── server.js
-│   ├── package.json
-│   └── .env
-│
-├── frontend
-│   ├── public
-│   │   └── favicon.ico
-│   │
-│   ├── src
-│   │   ├── api
-│   │   │   └── tankApi.js
-│   │   │
-│   │   ├── components
-│   │   │   ├── TankCard.jsx
-│   │   │   ├── Navbar.jsx
-│   │   │   └── StatusIndicator.jsx
-│   │   │
-│   │   ├── pages
-│   │   │   ├── Dashboard.jsx
-│   │   │   └── Login.jsx
-│   │   │
-│   │   ├── context
-│   │   │   └── AuthContext.jsx
-│   │   │
-│   │   ├── styles
-│   │   │   └── global.css
-│   │   │
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   │
-│   ├── vite.config.js
-│   ├── package.json
-│   └── .env
-│
-├── screenshots
-│   ├── dashboard.png
-│   └── login.png
-│
-├── docs
-│   ├── architecture.png
-│   └── circuit-diagram.png
-│
-├── README.md
-├── .gitignore
-└── LICENSE
-```
+
 ---
 
-# ⚙️ Installation Guide
+## 🚀 Key Features
 
-## 1️⃣ Clone Repository
+* **Real-time Live Monitoring:** Sub-second updates via HTTP / MQTT protocols.
+* **Animated Web Dashboard:** Built with React, Tailwind CSS, and Framer Motion.
+* **Motor Control Automation:** Allows users to manually overwrite or automatically toggle water pumps on/off depending on the water tank level.
+* **Analytics & Historical Logging:** Tracks water usage patterns (`Log.js` schema) and visualizes them natively using Recharts (`Analytics.jsx`).
+* **JWT User Authentication:** Complete login/registration gateway with protected routing (`User.js` schema).
+* **Environment-Simulated Testing:** Includes a dedicated Node.js `simulator.js` script to mock ESP32 payloads without needing physical hardware.
 
+---
+
+## 🧰 Tech Stack
+
+### 💻 Frontend
+- **React 19 (Vite)**
+- **Tailwind CSS** & **Framer Motion** (UI & Animations)
+- **Recharts** (Data Visualization)
+- **Axios** (API Requests)
+
+### ⚙️ Backend
+- **Node.js** & **Express** (API Gateway)
+- **MongoDB** & **Mongoose** (NoSQL Database)
+- **JSON Web Tokens (JWT)** & **Bcrypt.js** (Authentication)
+- **MQTT.js** (IoT Message Queuing)
+
+### 📡 IoT Hardware
+- **ESP32** NodeMCU
+- **HC-SR04** Ultrasonic Distance Sensor
+
+---
+
+## 📁 Project Structure
+
+```
+water-level-monitor/
+├── backend/            # Express.js REST API server
+│   ├── config/         # MongoDB & MQTT config
+│   ├── controllers/    # Route controllers (auth, tank, analytics)
+│   ├── middleware/     # API security (JWT validation)
+│   ├── models/         # Mongoose Schemas (User, Tank, Log)
+│   └── routes/         # Express endpoint definitions
+├── frontend/           # React Web Interface
+│   ├── src/
+│   │   ├── components/ # Reusable UI pieces (TankVisualizer, Navbar)
+│   │   ├── pages/      # Views (Dashboard, Analytics, Landing)
+│   │   └── context/    # React Context API (Auth Context)
+├── iot/                # Hardware & Simulation
+│   ├── esp32_example.ino # Arduino deployment firmware
+│   └── simulator.js    # ESP32 local software mock
+└── DEPLOYMENT.md       # Production hosting instructions
+```
+
+---
+
+## ⚙️ Quick Start Installation Guide
+
+### 1️⃣ Clone the Repository
 ```bash
-git clone https://github.com/yourusername/water-level-monitor.git
+git clone https://github.com/Yuvaraj007A/water-level-monitor.git
 cd water-level-monitor
+```
 
-
----
-
-🔧 Backend Setup
-
-Navigate to backend folder
-
+### 2️⃣ Start the Backend
+```bash
 cd backend
-
-Install dependencies
-
 npm install
-
-Create .env file
-
+```
+Create a `.env` file in the root of the backend folder:
+```env
 PORT=5000
-MONGO_URI=your_mongodb_connection_string
-
-Start backend server
-
+MONGO_URI=your_mongodb_atlas_connection_string
+JWT_SECRET=your_secret_key
+MQTT_BROKER_URL=mqtt://broker.emqx.io
+```
+```bash
 npm run dev
+```
 
-Server will run at
-
-http://localhost:5000
-
-
----
-
-💻 Frontend Setup
-
-Navigate to frontend
-
+### 3️⃣ Start the Frontend
+Open a new terminal session.
+```bash
 cd frontend
-
-Install dependencies
-
 npm install
-
-Run development server
-
+```
+Start the development server:
+```bash
 npm run dev
+```
+Navigate to `http://localhost:5173`.
 
-Frontend runs at
-
-http://localhost:5173
-
-
----
-
-📡 ESP32 Setup
-
-Upload the ESP32 code using Arduino IDE.
-
-Update the following values:
-
-const char* ssid = "YOUR_WIFI_NAME";
-const char* password = "YOUR_WIFI_PASSWORD";
-
-String apiUrl = "http://YOUR_SERVER_IP:5000/api/tank/update";
-String tankId = "tank_01";
-
-ESP32 will periodically send water level data to the backend.
-
-
----
-### 🔌 Hardware Circuit
-
-| Ultrasonic Sensor | ESP32   |
-|-------------------|---------|
-| VCC               | 5V      |
-| GND               | GND     |
-| TRIG              | GPIO 5  |
-| ECHO              | GPIO 18 |
-|-------------------|---------|
----
-
-🔗 API Documentation
-
-Update Tank Level
-
-Endpoint
-
-POST /api/tank/update
-
-Example Request
-
-{
-  "tankId": "tank_01",
-  "level": 78,
-  "distance": 22
-}
-
-Example Response
-
-{
-  "status": "success",
-  "message": "Tank level updated"
-}
-
+### 4️⃣ Deploy the IoT Node (Optional)
+If you have hardware on hand, flash the `iot/esp32_example.ino` script onto your board applying your local Wi-Fi credentials. Otherwise, simulate hardware using the provided mock script:
+```bash
+cd iot
+node simulator.js
+```
 
 ---
 
-📊 Future Improvements
+## 👨‍💻 Author
+**A. Yuvaraj**
+- Full Stack Developer & IoT Enthusiast
+- Ethical Hacking Aficionado
 
-Mobile application
-
-SMS / WhatsApp alerts
-
-Historical water usage analytics
-
-Multiple tank monitoring
-
-MQTT real-time data streaming
-
-
-
----
-
-👨‍💻 Author
-
-A. Yuvaraj
-
-IoT Developer
-
-Full Stack Developer
-
-Ethical Hacking Enthusiast
-
-
-
----
-
-📜 License
-
+## 📜 License
 This project is licensed under the MIT License.
-
----

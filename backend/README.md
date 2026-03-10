@@ -1,67 +1,80 @@
-# ⚡ Smart Water Level Monitoring System - Backend
+# ⚙️ Smart Water Level Monitoring System - Backend Module
 
-This is the Node.js / Express backend for the **Smart Water Level Monitoring System**. It provides a RESTful API for handling data from the ESP32 IoT device and serving it to the React frontend dashboard.
+The **backend API** server powers the real-time functionality of the **Smart Water Level Monitoring System**. Written in Node.js and Express.js, it securely processes HTTP endpoints invoked by IoT sensors, coordinates JWT authentication, calculates usage analytics, and manages data inside **MongoDB Atlas**. It also interfaces with an **MQTT broker** to asynchronously toggle motor hardware.
 
-## 🚀 Built With
-- **Node.js & Express.js**: Fast, scalable network applications server framework.
-- **MongoDB & Mongoose**: NoSQL database for flexible data modeling and object modeling for Node.js.
-- **Cors**: Middleware to enable Cross-Origin Resource Sharing.
-- **Dotenv**: Loads environment variables from `.env` files.
+---
 
-## ✨ Features
-- **Data Insertion API**: Securely accepts POST requests from the ESP32 payload to log water levels in real time.
-- **Data Retrieval API**: Delivers tank statistics to the React dashboard.
-- **Database Schema Modeling**: Fully functional models using Mongoose for tank identification and historic values.
+## 🚀 Key Technologies
+- **Node.js (v16+)** & **Express (v5.2.x)** - Event-driven RESTful API handler.
+- **MongoDB / Mongoose (v9.2.x)** - NoSQL data structures.
+- **JSON Web Tokens (JWT) / Bcrypt** - Secure user registration, authentication, and password hashing workflows.
+- **MQTT.js** - Enables two-way queued communication to manually or automatically toggle an attached motor (`ON`/`OFF`).
 
-## ⚙️ Usage
+---
 
-### Prerequisites
-- Node.js (v16 or higher)
-- NPM or Yarn
-- Valid **MongoDB Atlas** connection string
+## 📂 Models & Architecture
 
-### Installation
+### DB Schemas (`models/`)
+1. **User.js**: Mongoose model encompassing `name`, `email`, encrypted `password`, and a user `role`.
+2. **Tank.js**: Represents the physical limits of an entity (`tankHeight`, `tankCapacityLiters`) and monitors current states like `currentLevel` (percentage), `waterVolume` (calculated capacity), and `motorStatus`. Belongs to a specific User.
+3. **Log.js**: Records historical snapshots storing `level` and a `timestamp` string. This schema forms the data foundation for user-facing analytics and charts.
 
-1. Navigate to the backend directory:
+### API Routing (`routes/`)
+- **/api/auth**: Account management: POST `/register`, POST `/login`, PUT `/profile`. Protected via `protect()` JWT middleware validation.
+- **/api/tank**: Tank data ingestion gateway: GET `/`, PUT `/`, POST `/motor`. Exposes POST `/update` bound to `apiAuth` exclusively designed to listen for and decode **ESP32 Firmware** payloads.
+- **/api/analytics**: Usage query endpoints returning aggregated views: GET `/daily`, `/weekly`, and `/monthly`.
+
+---
+
+## ⚙️ Usage & Environment Setup
+
+### Installation Steps
+
+1. Navigate to the `backend` folder:
    ```bash
    cd backend
    ```
-2. Install the necessary dependencies:
+2. Install dependencies:
    ```bash
    npm install
    ```
-3. Create a `.env` file in the root of the `backend` folder:
+3. Establish your environment. Create a `.env` file at the directory root containing:
    ```env
    PORT=5000
-   MONGO_URI=your_mongodb_connection_string
+   NODE_ENV=development
+   MONGO_URI=mongodb+srv://<auth>.mongodb.net/water-monitor
+   JWT_SECRET=YOUR_SECRET_256_BIT_KEY
+   MQTT_BROKER_URL=mqtt://broker.emqx.io
    ```
-4. Start the backend development server:
+4. Start the server (Dev Mode utilizing Nodemon):
    ```bash
    npm run dev
    ```
 
-The application will be accessible at `http://localhost:5000`.
+*The application will by default run on `http://localhost:5000`*. 
 
-## 📂 File Structure
+---
 
-- `server.js`: Application entry point and main configuration.
-- `routes/`: Express application routing.
-- `controllers/`: Core application logic triggered by routes.
-- `models/`: Mongoose schemas.
-- `config/`: Configuration setup (e.g., DB connection).
+## 📡 Essential IoT API Interactions
 
-## 📡 API Endpoints
+The IoT node sends an HTTP POST request to update the real-time tank state. Ensure requests pass necessary authorization defined in the security layer:
 
-### `POST /api/tank/update`
-Receives new sensor data from the ESP32.
-**Body:**
+**POST `/api/tank/update`**
 ```json
 {
-  "tankId": "tank_01",
-  "level": 78,
-  "distance": 22
+  "tankId": "YOUR_MONGO_OBJECT_ID",
+  "level": 74,
+  "distance": 26,
+  "volume": 740
+}
+```
+**JSON Response:**
+```json
+{
+  "success": true,
+  "message": "Tank updated",
+  "data": { "currentLevel": 74, "motorStatus": "OFF" }
 }
 ```
 
-### `GET /api/tank/data`
-**(Example Route)** - Used by frontend to retrieve the latest data.
+If the automated threshold dips below a critical minimum (e.g. `20%`), the server will simultaneously fire an MQTT publish event on topic `tank/motor/control` carrying a `{"command": "ON"}` payload, instructing the IoT relay node to start the pump.

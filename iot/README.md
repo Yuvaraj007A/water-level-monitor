@@ -1,48 +1,70 @@
-# 📡 Smart Water Level Monitoring System - IoT Firmware
+# 📡 Smart Water Level Monitoring System - Hardware (IoT) Firmware
 
-This module contains the hardware firmware (`esp32_example.ino`) and a testing script (`simulator.js`) for the **Smart Water Level Monitoring System**. 
-
-The main purpose of the firmware is to calculate the water level based on the distance obtained from the HC-SR04 ultrasonic sensor and transmit it via WiFi to the system's Node.js Express backend API.
-
-## 🚀 Contents
-
-### `esp32_example.ino`
-The main ESP32 code built on the Arduino IDE framework that handles:
-- Establishing a stable WiFi connection.
-- Reading echo delays from the ultrasonic sensor and decoding them into raw distance/level percentages.
-- Sending robust HTTP POST requests to the dashboard's API endpoints at a regular interval.
-
-#### Prerequisite Software and Libraries
-- Add the [ESP32 board package](https://dl.espressif.com/dl/package_esp32_index.json) to your Arduino IDE.
-- Default `WiFi.h` and `HTTPClient.h` libraries are required (built-in).
-
-#### Deployment Configuration
-Before flashing the module, make sure to replace placeholder strings inside the C++ code with your specific environment properties:
-```cpp
-const char* ssid = "YOUR_WIFI_NAME";
-const char* password = "YOUR_WIFI_PASSWORD";
-
-// Adjust hostname depending on your live/local backend deployment.
-String apiUrl = "http://YOUR_SERVER_IP:5000/api/tank/update";
-String tankId = "tank_01";
-```
-
-#### Pin Outline
-| Ultrasonic Sensor | ESP32 GPIO | Description|
-|-------------------|------------|------------|
-| VCC               | 5V (VIN)   | Power line |
-| GND               | GND        | Ground     |
-| TRIG              | 5          | Trigger    |
-| ECHO              | 18         | Echo       |
+The `iot` directory bridges the physical **esp32 hardware** to the cloud system. This folder contains the raw C++ Arduino codebase driving the ultrasonic sensors (`esp32_example.ino`) alongside a Node.js utility script (`simulator.js`) for rapid mocked development bypassing physical dependency.
 
 ---
 
-### `simulator.js`
-A basic Javascript application running on Node.js designed to simulate ESP32 HTTP requests locally.
+## 🚀 Key Modules 
 
-**Usage:**
-This relies on sending fake HTTP POST requests without the need of the ultrasonic sensor module or an active ESP32 board, meaning you can test the software entirely in isolation. Run the script using Node:
-```bash
-node simulator.js
-```
-*Ensure that the `backend` server application is currently active before running.*
+### 1. `esp32_example.ino` (Hardware Firmware)
+The main ESP32 NodeMCU codebase. Built on the Arduino IDE framework, this script manages constant HTTP polling and network negotiations.
+
+**Core Workflow:**
+- Initializes an analog mapping loop on GPIO `5` (Trigger) and `18` (Echo).
+- Converts ping propagation microsecond transit delays into absolute distances (cm).
+- Transforms absolute physical capacity dimensions relative to user setup parameters (e.g. converting `100 cm` to `1000 Liters` using percentage fractions).
+- Wraps JSON payloads securely posting directly to `.env` defined REST `localhost:5000/api/tank/update` handlers.
+- Incorporates native logic for reading and acknowledging HTTP Response codes.
+
+### 🔌 Physical Circuit Topology
+| Ultrasonic Sensor | ESP32 GPIO | Description       |
+| ----------------- | ---------- | ----------------- |
+| VCC               | 5V (VIN)   | Positive Power    |
+| GND               | GND        | Common Ground     |
+| TRIG              | 5          | Pulse Trigger Out |
+| ECHO              | 18         | Pulse Delay In    |
+
+*The motor is generally tied to GPIO 2 or driven by independent MQTT relay nodes out-of-scope for the primary ultrasonic measurement.*
+
+---
+
+### 2. `simulator.js` (Software Simulator)
+The `simulator.js` node application actively sends randomly fluctuating (but bounded) virtual water level numbers directly to the active `backend` API via synchronous intervals locally without utilizing the actual ESP32 chip.
+
+**Why use it?**
+- To test the load behavior of your Node.js routing controller and MongoDB `Log` logging schemas.
+- To observe how Recharts natively render "Live Data" changes within the `Dashboard.jsx`.
+- To bypass messy hardware assembly dependencies for casual frontend experimentation.
+
+---
+
+## ⚙️ Initial Configuration
+
+### Hardware Installation Steps
+1. Insert your **esp32 board** definitions into Arduino IDE via `Preferences > Additional Boards Manager URLs` [Link to package](https://dl.espressif.com/dl/package_esp32_index.json).
+2. Establish your static parameters located directly at the top of the C++ file:
+   ```cpp
+   const char* ssid = "YOUR_WIFI_NETWORK_NAME";
+   const char* password = "YOUR_WIFI_KEY";
+
+   // Direct your API Url exactly. e.g. http://192.168.1.15:5000/api/tank/update
+   String apiUrl = "http://YOUR_SERVER_LOCAL_NETWORK_IP/api/tank/update";
+   
+   // Create a tank on the frontend UI and copy its unique MongoDB _id here:
+   String tankId = "60a1..ObjectId..b323";
+   ```
+3. Attach to a USB-to-Serial port and upload the compiled sketch.
+
+### Simulator Setup Steps
+If preferring to utilize the mocked generator, you simply run the script directly through the standard terminal.
+
+1. CD into the `iot` directory:
+   ```bash
+   cd iot
+   ```
+2. Manually modify `simulator.js` to contain the unique active MongoDB `tankId`.
+3. Boot the instance:
+   ```bash
+   node simulator.js
+   ```
+*(Ensure the backend API on port 5000 is concurrently functioning.)*
