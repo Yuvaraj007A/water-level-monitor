@@ -4,25 +4,28 @@ The `iot` directory bridges the physical **esp32 hardware** to the cloud system.
 
 ---
 
-## 🚀 Key Modules 
+## 🚀 Firmware Options 
 
-### 1. `esp32_example.ino` (Hardware Firmware)
-The main ESP32 NodeMCU codebase. Built on the Arduino IDE framework, this script manages constant HTTP polling and network negotiations.
+You can deploy the system using a single unified ESP32, or distribute the hardware across two separate ESP32 chips for physical convenience!
 
-**Core Workflow:**
-- Initializes an analog mapping loop on GPIO `5` (Trigger) and `18` (Echo).
-- Converts ping propagation microsecond transit delays into absolute distances (cm).
-- Transforms absolute physical capacity dimensions relative to user setup parameters (e.g. converting `100 cm` to `1000 Liters` using percentage fractions).
-- Wraps JSON payloads securely posting directly to `.env` defined REST `localhost:5000/api/tank/update` handlers.
-- Incorporates native logic for reading and acknowledging HTTP Response codes.
+### Option 1: All-in-One (`esp32_example.ino`)
+The legacy, complete codebase. This script manages both the ultrasonic sensor HTTP/MQTT publishing AND the motor's relay subscription simultaneously on the same board.
+* **Ultrasonic Trig/Echo:** GPIO 5, 18
+* **Motor Relay Output:** GPIO 4
 
-### 🔌 Physical Circuit Topology
-| Ultrasonic Sensor | ESP32 GPIO | Description       |
-| ----------------- | ---------- | ----------------- |
-| VCC               | 5V (VIN)   | Positive Power    |
-| GND               | GND        | Common Ground     |
-| TRIG              | 5          | Pulse Trigger Out |
-| ECHO              | 18         | Pulse Delay In    |
+---
+
+### Option 2: Distributed Architecture (Recommended)
+
+Because the system uses an MQTT broker as the middle-man, you can place the Sensor on top of the water tank, and the Motor Relay inside your house miles away, as long as both connect to Wi-Fi!
+
+#### A. Node 1 - Sensor Device (`esp32_sensor/esp32_sensor.ino`)
+Contains *only* the logic to fire an ultrasonic pulse and publish the read coordinates to the cloud.
+* **Ultrasonic Trig/Echo:** GPIO 5, 18
+
+#### B. Node 2 - Relay Device (`esp32_relay/esp32_relay.ino`)
+Contains *only* the logic to maintain a lightweight MQTT connection subscribing to `ON`/`OFF` hardware commands.
+* **Motor Relay Output:** GPIO 4
 
 *The motor is generally tied to GPIO 2 or driven by independent MQTT relay nodes out-of-scope for the primary ultrasonic measurement.*
 
