@@ -1,80 +1,169 @@
-# ⚙️ Smart Water Level Monitoring System - Backend Module
+# ⚙️ Backend — Smart Water Level Monitoring System
 
-The **backend API** server powers the real-time functionality of the **Smart Water Level Monitoring System**. Written in Node.js and Express.js, it securely processes HTTP endpoints invoked by IoT sensors, coordinates JWT authentication, calculates usage analytics, and manages data inside **MongoDB Atlas**. It also interfaces with an **MQTT broker** to asynchronously toggle motor hardware.
-
----
-
-## 🚀 Key Technologies
-- **Node.js (v16+)** & **Express (v5.2.x)** - Event-driven RESTful API handler.
-- **MongoDB / Mongoose (v9.2.x)** - NoSQL data structures.
-- **JSON Web Tokens (JWT) / Bcrypt** - Secure user registration, authentication, and password hashing workflows.
-- **MQTT.js** - Enables two-way queued communication to manually or automatically toggle an attached motor (`ON`/`OFF`).
+The **Express.js API server** is the central hub of the system. It receives sensor data from ESP32 boards via **MQTT**, stores logs in **MongoDB Atlas**, handles user authentication with **JWT**, and serves the React dashboard through a REST API.
 
 ---
 
-## 📂 Models & Architecture
+## 🚀 Tech Stack
 
-### DB Schemas (`models/`)
-1. **User.js**: Mongoose model encompassing `name`, `email`, encrypted `password`, and a user `role`.
-2. **Tank.js**: Represents the physical limits of an entity (`tankHeight`, `tankCapacityLiters`) and monitors current states like `currentLevel` (percentage), `waterVolume` (calculated capacity), and `motorStatus`. Belongs to a specific User.
-3. **Log.js**: Records historical snapshots storing `level` and a `timestamp` string. This schema forms the data foundation for user-facing analytics and charts.
-
-### API Routing (`routes/`)
-- **/api/auth**: Account management: POST `/register`, POST `/login`, PUT `/profile`. Protected via `protect()` JWT middleware validation.
-- **/api/tank**: Tank data ingestion gateway: GET `/`, PUT `/`, POST `/motor`. Exposes POST `/update` bound to `apiAuth` exclusively designed to listen for and decode **ESP32 Firmware** payloads.
-- **/api/analytics**: Usage query endpoints returning aggregated views: GET `/daily`, `/weekly`, and `/monthly`.
+| Technology | Version | Role |
+|---|---|---|
+| **Node.js** | v16+ | Runtime |
+| **Express** | v5.2.x | REST API framework |
+| **MongoDB / Mongoose** | v9.2.x | NoSQL database |
+| **JWT / Bcrypt.js** | — | Auth & password hashing |
+| **MQTT.js** | — | IoT message broker bridge |
 
 ---
 
-## ⚙️ Usage & Environment Setup
+## 📂 Project Structure
 
-### Installation Steps
-
-1. Navigate to the `backend` folder:
-   ```bash
-   cd backend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Establish your environment. Create a `.env` file at the directory root containing:
-   ```env
-   PORT=5000
-   NODE_ENV=development
-   MONGO_URI=mongodb+srv://<auth>.mongodb.net/water-monitor
-   JWT_SECRET=YOUR_SECRET_256_BIT_KEY
-   MQTT_BROKER_URL=mqtt://broker.emqx.io
-   ```
-4. Start the server (Dev Mode utilizing Nodemon):
-   ```bash
-   npm run dev
-   ```
-
-*The application will by default run on `http://localhost:5000`*. 
-
----
-
-## 📡 Essential IoT API Interactions
-
-The IoT node sends an HTTP POST request to update the real-time tank state. Ensure requests pass necessary authorization defined in the security layer:
-
-**POST `/api/tank/update`**
-```json
-{
-  "tankId": "YOUR_MONGO_OBJECT_ID",
-  "level": 74,
-  "distance": 26,
-  "volume": 740
-}
 ```
-**JSON Response:**
-```json
-{
-  "success": true,
-  "message": "Tank updated",
-  "data": { "currentLevel": 74, "motorStatus": "OFF" }
-}
+backend/
+├── config/
+│   ├── db.js            # MongoDB Atlas connection
+│   └── mqtt.js          # MQTT broker subscriber setup
+├── controllers/
+│   ├── authController.js
+│   ├── tankController.js
+│   └── analyticsController.js
+├── middleware/
+│   └── authMiddleware.js  # JWT protect() & apiAuth()
+├── models/
+│   ├── User.js            # User schema
+│   ├── Tank.js            # Tank schema (level, motor, thresholds)
+│   └── Log.js             # Historical reading schema
+├── routes/
+│   ├── authRoutes.js
+│   ├── tankRoutes.js
+│   └── analyticsRoutes.js
+└── server.js
 ```
 
-If the automated threshold dips below a critical minimum (e.g. `20%`), the server will simultaneously fire an MQTT publish event on topic `tank/motor/control` carrying a `{"command": "ON"}` payload, instructing the IoT relay node to start the pump.
+---
+
+## 🗄 Database Models
+
+### `User.js`
+| Field | Type | Description |
+|---|---|---|
+| `name` | String | Display name |
+| `email` | String | Unique login identifier |
+| `password` | String | Bcrypt hashed |
+| `role` | String | `user` or `admin` |
+
+### `Tank.js`
+| Field | Type | Description |
+|---|---|---|
+| `tankHeight` | Number | Physical tank height in cm |
+| `tankCapacityLiters` | Number | Total capacity in litres |
+| `currentLevel` | Number | Current water level (%) |
+| `waterVolume` | Number | Calculated volume in litres |
+| `motorStatus` | String | `ON` or `OFF` |
+| `user` | ObjectId | Owner reference |
+
+### `Log.js`
+| Field | Type | Description |
+|---|---|---|
+| `tank` | ObjectId | Tank reference |
+| `level` | Number | Water level % at time of reading |
+| `distance` | Number | Raw sensor distance (cm) |
+| `timestamp` | Date | Reading timestamp |
+
+---
+
+## 📡 MQTT Integration
+
+The backend subscribes to:
+```
+watermonitor/tank/{tankId}/level
+```
+
+**Incoming payload from ESP32 Sensor:**
+```json
+{
+  "apiKey": "esp32-secret-key-999",
+  "distance": 42.5,
+  "waterLevel": 57.5,
+  "tankHeight": 100.0
+}
+```
+
+The server:
+1. Validates the `apiKey`
+2. Updates the tank's `currentLevel`, `waterVolume` in MongoDB
+3. Creates a new `Log` entry
+4. If `waterLevel < 20%`, automatically publishes `ON` to `watermonitor/tank/{tankId}/motor`
+5. If `waterLevel > 90%`, automatically publishes `OFF` to `watermonitor/tank/{tankId}/motor`
+
+---
+
+## 🔌 REST API Endpoints
+
+### Auth — `/api/auth`
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/register` | None | Create new user account |
+| POST | `/login` | None | Login, returns JWT token |
+| PUT | `/profile` | JWT | Update profile |
+
+### Tank — `/api/tank`
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/` | JWT | Get all tanks for user |
+| PUT | `/` | JWT | Update tank settings |
+| POST | `/motor` | JWT | Manual motor ON/OFF command |
+| POST | `/update` | API Key | ESP32 HTTP sensor data push (alternative to MQTT) |
+
+**`POST /api/tank/update` payload:**
+```json
+{
+  "apiKey": "esp32-secret-key-999",
+  "distance": 42.5,
+  "waterLevel": 57.5,
+  "tankHeight": 100.0
+}
+```
+
+### Analytics — `/api/analytics`
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/daily` | JWT | Last 24h readings aggregated |
+| GET | `/weekly` | JWT | Last 7 days aggregated |
+| GET | `/monthly` | JWT | Last 30 days aggregated |
+
+---
+
+## ⚙️ Environment Setup
+
+### 1. Install dependencies
+```bash
+cd backend
+npm install
+```
+
+### 2. Create `.env` file
+```env
+PORT=5000
+NODE_ENV=development
+MONGO_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/water-monitor
+JWT_SECRET=your_minimum_256_bit_secret_key
+MQTT_BROKER_URL=mqtt://broker.hivemq.com
+```
+
+### 3. Start the server
+```bash
+npm run dev       # Development (nodemon, hot reload)
+npm start         # Production
+```
+
+Server runs at `http://localhost:5000` by default.
+
+---
+
+## 🔐 Security Notes
+
+- All dashboard routes require `Authorization: Bearer <JWT_TOKEN>` header
+- ESP32 firmware endpoints use a separate `apiKey` guard (`authMiddleware.apiAuth`)
+- Passwords are salted and hashed using `bcrypt` before storage — never stored in plain text
+- JWT tokens expire after 30 days by default (configurable in `authController.js`)
