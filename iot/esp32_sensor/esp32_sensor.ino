@@ -8,9 +8,11 @@
 #include <WebServer.h>
 #include <WiFi.h>
 #include <esp_now.h>
+#include <DNSServer.h>
 
 // Initialize WebServer on port 80 and Non-Volatile Storage (Preferences)
 WebServer server(80);
+DNSServer dnsServer;
 Preferences preferences;
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
@@ -23,9 +25,6 @@ String tankId     = "";
 const char *apiKey = "esp32-secret-key-999";
 
 // ─── Tank Adjustment Variables (saved in NVS) ───────────────
-// tankHeightCm: Physical distance from sensor to tank bottom (tank full height)
-// Used to calculate water level percentage:
-//   waterLevel% = ((tankHeightCm - distance) / tankHeightCm) * 100
 float tankHeightCm = 100.0; // Default: 100 cm tall tank
 
 // Hardware Pins (SENSOR ONLY)
@@ -38,19 +37,21 @@ const int configPin = 0; // The built-in "BOOT" button on most ESP32 boards
 
 long  duration;
 float distanceCm;
-float waterLevelPct; // Calculated water level percentage
+float waterLevelPct;
 
-// System States
+// System States & Non-blocking Timers
 bool configMode  = false;
 bool espNowReady = false;
 unsigned long lastReadingTime = 0;
+unsigned long lastMqttReconnectAttempt = 0;
+unsigned long lastWiFiReconnectAttempt = 0;
 
-// MQTT Topics automatically generated from tankId
+// MQTT Topics
 String publishTopic = "";
+String configTopic  = "";
 
 // ==========================================
 // ESP-NOW: Shared data structure
-// MUST match the exact same struct in esp32_relay.ino
 // ==========================================
 typedef struct espnow_message {
   float distance;
@@ -59,20 +60,23 @@ typedef struct espnow_message {
   char  apiKey[64];
 } espnow_message;
 
-// ⚠️  Paste the MAC address of your RELAY ESP32 here.
-// Go to the Relay's setup page to find its MAC address.
-// It will also be auto-loaded from NVS if saved via dashboard.
+// Relay MAC Address (Target)
 uint8_t relayMacAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-// ESP-NOW send callback
+// ==========================================
+// ESP-NOW SEND CALLBACK
+// ==========================================
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+void onDataSent(const esp_now_send_info_t *info, esp_now_send_status_t status) {
+#else
 void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+#endif
   Serial.print("[ESP-NOW] Send Status: ");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivered ✓" : "Failed ✗");
 }
 
 // ==========================================
 // INITIALIZE ESP-NOW
-// Called AFTER WiFi is connected so channel is locked in
 // ==========================================
 void initESPNow() {
   if (esp_now_init() != ESP_OK) {
@@ -104,13 +108,13 @@ void initESPNow() {
 }
 
 // ==========================================
-// SEND READING VIA ESP-NOW (local direct)
+// SEND READING VIA ESP-NOW
 // ==========================================
 void sendViaESPNow(float dist, float lvlPct) {
   if (!espNowReady) return;
 
   espnow_message msg;
-  msg.distance     = dist;
+  msg.distance      = dist;
   msg.waterLevelPct = lvlPct;
   tankId.toCharArray(msg.tankId, sizeof(msg.tankId));
   strncpy(msg.apiKey, apiKey, sizeof(msg.apiKey));
@@ -123,7 +127,6 @@ void sendViaESPNow(float dist, float lvlPct) {
 
 // ==========================================
 // PARSE STORED MAC ADDRESS
-// Stored as "AA:BB:CC:DD:EE:FF" → uint8_t array
 // ==========================================
 void parseMacAddress(String macStr, uint8_t *mac) {
   int idx = 0;
@@ -139,61 +142,61 @@ void parseMacAddress(String macStr, uint8_t *mac) {
 void handleRoot() {
   String tankHeightStr = String(tankHeightCm, 1);
 
-  String html = "<!DOCTYPE html><html><head><meta name=\"viewport\" "
-                "content=\"width=device-width, initial-scale=1\">";
-  html += "<title>Sensor Admin Dashboard</title>";
-  html += "<style>";
-  html += "body{font-family:'Segoe UI',Arial,sans-serif;background:#0f172a;color:#f8fafc;margin:0;padding:20px;text-align:center;}";
-  html += ".container{max-width:440px;margin:0 auto;background:#1e293b;padding:30px;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,.3);}";
-  html += "h2{color:#3b82f6;margin-top:0;}";
-  html += ".badge{display:inline-block;background:#1d4ed8;color:#bfdbfe;font-size:11px;border-radius:6px;padding:2px 8px;margin-bottom:20px;}";
-  html += ".section{background:#0f172a;border-radius:8px;padding:16px;margin-bottom:20px;text-align:left;}";
-  html += ".section-title{color:#38bdf8;font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;}";
-  html += "label{display:block;text-align:left;margin-bottom:5px;color:#94a3b8;font-size:13px;}";
-  html += "input{width:100%;padding:10px;margin-bottom:14px;box-sizing:border-box;border:1px solid #334155;background:#1e293b;color:white;border-radius:6px;font-size:14px;}";
-  html += ".hint{font-size:11px;color:#475569;margin-top:-10px;margin-bottom:14px;text-align:left;}";
-  html += "button{width:100%;padding:12px;background:#3b82f6;color:white;border:none;border-radius:6px;font-weight:bold;cursor:pointer;transition:.3s;font-size:15px;}";
-  html += "button:hover{background:#2563eb;}";
-  html += ".info-box{background:#0f172a;border:1px solid #1e3a5f;border-radius:8px;padding:12px;margin-top:20px;font-size:12px;color:#64748b;text-align:left;}";
-  html += ".info-box span{color:#38bdf8;font-weight:bold;font-size:13px;}";
-  html += "</style></head><body>";
-  html += "<div class=\"container\">";
-  html += "<h2>📡 Sensor Setup</h2>";
-  html += "<div class=\"badge\">WiFi + MQTT + ESP-NOW</div>";
-  html += "<form action=\"/save\" method=\"POST\">";
-
-  // ── Network Settings ──
+  String html = R"rawliteral(
+<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sensor Setup</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: #f8fafc; margin: 0; padding: 20px; text-align: center; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.container { width: 100%; max-width: 440px; background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); padding: 30px; border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); box-sizing: border-box; }
+h2 { color: #fff; margin-top: 0; font-weight: 800; font-size: 28px; letter-spacing: -0.5px; }
+h2 span { color: #3b82f6; }
+.badge { display: inline-block; background: rgba(59, 130, 246, 0.2); color: #93c5fd; font-size: 11px; font-weight: 800; border-radius: 20px; padding: 6px 14px; margin-bottom: 24px; letter-spacing: 1px; }
+.section { background: rgba(15, 23, 42, 0.5); border-radius: 16px; padding: 20px; margin-bottom: 20px; text-align: left; border: 1px solid rgba(255, 255, 255, 0.02); }
+.section-title { color: #3b82f6; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+label { display: block; margin-bottom: 6px; color: #94a3b8; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+input { width: 100%; padding: 14px 16px; margin-bottom: 16px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: white; border-radius: 12px; font-size: 15px; font-family: 'Inter', sans-serif; transition: all 0.3s ease; }
+input:focus { outline: none; border-color: #3b82f6; background: rgba(59, 130, 246, 0.05); }
+.hint { font-size: 12px; color: #64748b; margin-top: -10px; margin-bottom: 16px; }
+button { width: 100%; padding: 16px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; border: none; border-radius: 14px; font-weight: 800; cursor: pointer; transition: all 0.3s ease; font-size: 16px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); }
+button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4); }
+.info-box { background: rgba(0,0,0,0.2); border: 1px dashed rgba(59, 130, 246, 0.3); border-radius: 16px; padding: 16px; margin-top: 24px; font-size: 12px; color: #94a3b8; text-align: center; line-height: 1.6; }
+.info-box span { color: #bfdbfe; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; }
+</style></head><body>
+<div class="container">
+<h2><span>📡</span> Sensor Setup</h2>
+<div class="badge">WIFI • MQTT • ESP-NOW</div>
+<form action="/save" method="POST">
+)rawliteral";
+  
   html += "<div class=\"section\">";
-  html += "<div class=\"section-title\">🌐 Network Settings</div>";
-  html += "<label>WiFi SSID</label><input type=\"text\" name=\"ssid\" placeholder=\"Your Home Wi-Fi\" value=\"" + ssid + "\">";
+  html += "<div class=\"section-title\">🌐 Network</div>";
+  html += "<label>WiFi SSID</label><input type=\"text\" name=\"ssid\" placeholder=\"Home Network\" value=\"" + ssid + "\">";
   html += "<label>WiFi Password</label><input type=\"password\" name=\"password\" placeholder=\"***\" value=\"" + password + "\">";
   html += "<label>MQTT Broker</label><input type=\"text\" name=\"mqttServer\" placeholder=\"broker.hivemq.com\" value=\"" + mqttServer + "\">";
-  html += "<label>Tank ID (MongoDB)</label><input type=\"text\" name=\"tankId\" placeholder=\"Paste Tank ID here...\" value=\"" + tankId + "\">";
+  html += "<label>Tank ID (Database)</label><input type=\"text\" name=\"tankId\" placeholder=\"Paste ID here...\" value=\"" + tankId + "\">";
   html += "</div>";
 
-  // ── ESP-NOW Settings ──
   html += "<div class=\"section\">";
-  html += "<div class=\"section-title\">📶 ESP-NOW Pairing</div>";
+  html += "<div class=\"section-title\">📶 Direct Pairing</div>";
   html += "<label>Relay MAC Address</label>";
-  html += "<input type=\"text\" name=\"relayMac\" placeholder=\"AA:BB:CC:DD:EE:FF (from Relay page)\">";
-  html += "<div class=\"hint\">Find this on the Relay's setup page. Leave blank to keep existing.</div>";
+  html += "<input type=\"text\" name=\"relayMac\" placeholder=\"AA:BB:CC:DD:EE:FF\">";
+  html += "<div class=\"hint\">Copy this from the Relay's setup page</div>";
   html += "</div>";
 
-  // ── Tank Adjustment ──
   html += "<div class=\"section\">";
-  html += "<div class=\"section-title\">🪣 Tank Calibration</div>";
+  html += "<div class=\"section-title\">🪣 Calibration</div>";
   html += "<label>Tank Height (cm)</label>";
   html += "<input type=\"number\" name=\"tankHeight\" step=\"0.1\" min=\"10\" max=\"500\" value=\"" + tankHeightStr + "\">";
-  html += "<div class=\"hint\">Distance from the sensor (mounted at top) to the bottom of the empty tank. Used to calculate water level %.</div>";
+  html += "<div class=\"hint\">Distance from sensor to the bottom of the tank</div>";
   html += "</div>";
 
-  html += "<button type=\"submit\">💾 Save &amp; Restart Device</button>";
+  html += "<button type=\"submit\">Save & Restart</button>";
   html += "</form>";
 
-  html += "<div class=\"info-box\">📌 This Sensor's MAC Address:<br><span>" + WiFi.macAddress() + "</span><br><br>"
-          "Paste this into the Relay's ESP-NOW Pairing field.<br><br>"
-          "⚙️ Tank Height: <span>" + tankHeightStr + " cm</span> | "
-          "Approx Level: <span>" + String(waterLevelPct, 1) + "%</span></div>";
+  html += "<div class=\"info-box\">Device MAC Address<br><span>" + WiFi.macAddress() + "</span><br><br>";
+  html += "Height Calibration: <span>" + tankHeightStr + " cm</span><br>";
+  html += "Current Level: <span>" + String(waterLevelPct, 1) + "%</span></div>";
   html += "</div></body></html>";
 
   server.send(200, "text/html", html);
@@ -228,19 +231,40 @@ void handleSave() {
 }
 
 // ==========================================
-// MQTT RECONNECT
+// MQTT CALLBACK
+// ==========================================
+void mqttCallback(char *topic, byte *payload, unsigned int length) {
+  String message = "";
+  for (int i = 0; i < length; i++) message += (char)payload[i];
+
+  if (String(topic) == configTopic) {
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, message);
+    if (!error) {
+       if (doc.containsKey("tankHeight")) {
+          tankHeightCm = doc["tankHeight"];
+          preferences.putFloat("tankHeight", tankHeightCm);
+          Serial.printf("[Cloud Config] Updated tankHeight: %.1f cm\n", tankHeightCm);
+       }
+    }
+  }
+}
+
+// ==========================================
+// MQTT RECONNECT (Non-Blocking)
 // ==========================================
 void reconnectMQTT() {
-  while (!mqttClient.connected()) {
+  if (millis() - lastMqttReconnectAttempt > 5000) {
+    lastMqttReconnectAttempt = millis();
     Serial.print("[MQTT] Attempting connection...");
     String clientId = "SensorClient-" + String(random(0xffff), HEX);
     if (mqttClient.connect(clientId.c_str())) {
       Serial.println("connected ✓");
+      mqttClient.subscribe(configTopic.c_str());
+      Serial.println("[MQTT] Subscribed to config topic");
     } else {
       Serial.print("failed, rc=");
-      Serial.print(mqttClient.state());
-      Serial.println(" retrying in 5s");
-      delay(5000);
+      Serial.println(mqttClient.state());
     }
   }
 }
@@ -252,12 +276,10 @@ void setup() {
   Serial.begin(115200);
   Serial.println("\n========== SENSOR BOOT ==========");
 
-  // Initialize Pins
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   pinMode(configPin, INPUT_PULLUP);
 
-  // Load config from NVS
   preferences.begin("app-config", false);
   ssid         = preferences.getString("ssid", "");
   password     = preferences.getString("password", "");
@@ -270,7 +292,6 @@ void setup() {
 
   Serial.printf("[TANK] Height configured: %.1f cm\n", tankHeightCm);
 
-  // Load stored Relay MAC if available
   if (storedMac.length() == 17) {
     parseMacAddress(storedMac, relayMacAddress);
     Serial.println("[ESP-NOW] Loaded Relay MAC: " + storedMac);
@@ -279,13 +300,14 @@ void setup() {
   }
 
   if (ssid == "" || digitalRead(configPin) == LOW) {
-    // ── CONFIG MODE (Access Point) ──
     configMode = true;
     Serial.println("[CONFIG] Starting Access Point 'Sensor-Setup'...");
     WiFi.mode(WIFI_AP);
     WiFi.softAP("Sensor-Setup");
     Serial.print("[CONFIG] Connect to: http://");
     Serial.println(WiFi.softAPIP());
+
+    dnsServer.start(53, "*", WiFi.softAPIP());
 
     server.on("/", handleRoot);
     server.on("/save", HTTP_POST, handleSave);
@@ -295,12 +317,15 @@ void setup() {
       delay(1000);
       ESP.restart();
     });
+
+    server.onNotFound([]() {
+      server.sendHeader("Location", "http://192.168.4.1/", true);
+      server.send(302, "text/plain", "");
+    });
+
     server.begin();
   } else {
-    // ── NORMAL OPERATION MODE ──
     Serial.println("[WiFi] Connecting to: " + ssid);
-
-    // STEP 1: Connect WiFi in Station mode
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid.c_str(), password.c_str());
 
@@ -312,20 +337,17 @@ void setup() {
     }
 
     if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("\n[WiFi] FAILED. Rebooting in 5s...");
-      delay(5000);
-      ESP.restart();
+      Serial.println("\n[WiFi] Initial connection failed. Will retry in background.");
+    } else {
+      Serial.println("\n[WiFi] Connected ✓");
+      Serial.println("[WiFi] IP:  " + WiFi.localIP().toString());
     }
 
-    Serial.println("\n[WiFi] Connected ✓");
-    Serial.println("[WiFi] IP:  " + WiFi.localIP().toString());
-    Serial.println("[WiFi] MAC: " + WiFi.macAddress());
-
-    // STEP 2: Setup MQTT
     publishTopic = "watermonitor/tank/" + tankId + "/level";
+    configTopic  = "watermonitor/tank/" + tankId + "/config";
     mqttClient.setServer(mqttServer.c_str(), 1883);
+    mqttClient.setCallback(mqttCallback);
 
-    // STEP 3: Init ESP-NOW (MUST be after WiFi so channel matches)
     initESPNow();
   }
 }
@@ -335,29 +357,31 @@ void setup() {
 // ==========================================
 void loop() {
   if (configMode) {
+    dnsServer.processNextRequest();
     server.handleClient();
     return;
   }
 
-  // Auto-reconnect Wi-Fi
+  // 1. Non-blocking Wi-Fi Reconnect
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[WiFi] Disconnected, reconnecting...");
-    WiFi.reconnect();
-    delay(5000);
-    return;
+    if (millis() - lastWiFiReconnectAttempt > 5000) { 
+      lastWiFiReconnectAttempt = millis();
+      Serial.println("[WiFi] Disconnected, attempting reconnect...");
+      WiFi.reconnect();
+    }
+  } else {
+    // 2. Non-blocking MQTT Reconnect
+    if (!mqttClient.connected()) {
+      reconnectMQTT();
+    } else {
+      mqttClient.loop();
+    }
   }
 
-  // MQTT keep alive
-  if (!mqttClient.connected()) {
-    reconnectMQTT();
-  }
-  mqttClient.loop();
-
-  // Non-blocking timer: Run every 5 seconds
+  // 3. Sensor Reading & Publishing
   if (millis() - lastReadingTime >= 5000) {
     lastReadingTime = millis();
 
-    // ── Read Ultrasonic Sensor ──
     digitalWrite(trigPin, LOW);
     delayMicroseconds(2);
     digitalWrite(trigPin, HIGH);
@@ -367,31 +391,31 @@ void loop() {
     duration   = pulseIn(echoPin, HIGH);
     distanceCm = duration * SOUND_SPEED / 2;
 
-    // ── Calculate Water Level Percentage ──
-    // distance decreases as water rises (sensor is at top)
     waterLevelPct = ((tankHeightCm - distanceCm) / tankHeightCm) * 100.0;
-    waterLevelPct = constrain(waterLevelPct, 0.0, 100.0); // clamp 0–100
+    waterLevelPct = constrain(waterLevelPct, 0.0, 100.0);
 
     Serial.printf("[SENSOR] Distance: %.2f cm | Water Level: %.1f%%\n",
                   distanceCm, waterLevelPct);
 
-    // ── PUBLISH via MQTT (Cloud) ──
-    StaticJsonDocument<256> doc;
-    doc["apiKey"]       = apiKey;
-    doc["distance"]     = distanceCm;
-    doc["waterLevel"]   = waterLevelPct;   // <-- now includes % level
-    doc["tankHeight"]   = tankHeightCm;    // <-- useful for dashboard display
-
-    String requestBody;
-    serializeJson(doc, requestBody);
-
-    if (mqttClient.publish(publishTopic.c_str(), requestBody.c_str())) {
-      Serial.println("[MQTT] Published ✓");
-    } else {
-      Serial.println("[MQTT] Publish failed ✗");
-    }
-
-    // ── SEND via ESP-NOW (Local Direct) ──
+    // ── SEND via ESP-NOW (Local Direct - Always attempts) ──
     sendViaESPNow(distanceCm, waterLevelPct);
+
+    // ── PUBLISH via MQTT (Cloud - Only if connected) ──
+    if (mqttClient.connected()) {
+      JsonDocument doc;
+      doc["apiKey"]     = apiKey;
+      doc["distance"]   = distanceCm;
+      doc["waterLevel"] = waterLevelPct;
+      doc["tankHeight"] = tankHeightCm;
+
+      String requestBody;
+      serializeJson(doc, requestBody);
+
+      if (mqttClient.publish(publishTopic.c_str(), requestBody.c_str())) {
+        Serial.println("[MQTT] Published ✓");
+      } else {
+        Serial.println("[MQTT] Publish failed ✗");
+      }
+    }
   }
 }

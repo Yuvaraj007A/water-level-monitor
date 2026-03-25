@@ -2,42 +2,79 @@ const Tank = require('../models/Tank');
 const Log = require('../models/Log');
 const mqttClient = require('../config/mqtt');
 
-// @desc    Get user's tank details
+// @desc    Get user's all tanks details
 // @route   GET /api/tank
 // @access  Private
-const getTank = async (req, res) => {
+const getTanks = async (req, res) => {
     try {
-        let tank = await Tank.findOne({ userId: req.user._id });
+        let tanks = await Tank.find({ userId: req.user._id });
 
-        // Auto-create a tank for the user if it doesn't exist
-        if (!tank) {
-            tank = await Tank.create({
+        // Auto-create a primary tank for the user if they have 0 tanks
+        if (tanks.length === 0) {
+            const primaryTank = await Tank.create({
                 userId: req.user._id,
+                name: 'Primary Tank',
                 tankHeight: 100,
                 tankCapacityLiters: 1000,
+                lowThreshold: 20,
+                highThreshold: 90
             });
+            tanks = [primaryTank];
         }
 
-        res.json(tank);
+        res.json(tanks);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// @desc    Update tank details (capacity/height)
-// @route   PUT /api/tank
+// @desc    Create a new tank
+// @route   POST /api/tank
+// @access  Private
+const createTank = async (req, res) => {
+    try {
+        const { name, tankHeight, tankCapacityLiters, lowThreshold, highThreshold } = req.body;
+        const tank = await Tank.create({
+            userId: req.user._id,
+            name: name || 'Secondary Tank',
+            tankHeight: tankHeight || 100,
+            tankCapacityLiters: tankCapacityLiters || 1000,
+            lowThreshold: lowThreshold || 20,
+            highThreshold: highThreshold || 90,
+        });
+        res.status(201).json(tank);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Update tank details (capacity/height/name)
+// @route   PUT /api/tank/:id
 // @access  Private
 const updateTankConfig = async (req, res) => {
     try {
-        const { tankHeight, tankCapacityLiters, automationEnabled } = req.body;
-        let tank = await Tank.findOne({ userId: req.user._id });
+        const { name, tankHeight, tankCapacityLiters, automationEnabled, lowThreshold, highThreshold } = req.body;
+        let tank = await Tank.findOne({ _id: req.params.id, userId: req.user._id });
         if (!tank) return res.status(404).json({ message: 'Tank not found' });
 
-        tank.tankHeight = tankHeight || tank.tankHeight;
-        tank.tankCapacityLiters = tankCapacityLiters || tank.tankCapacityLiters;
+        if (name) tank.name = name;
+        if (tankHeight) tank.tankHeight = Number(tankHeight) || 100;
+        if (tankCapacityLiters) tank.tankCapacityLiters = Number(tankCapacityLiters) || 1000;
         if (automationEnabled !== undefined) tank.automationEnabled = automationEnabled;
+        if (lowThreshold !== undefined) tank.lowThreshold = Number(lowThreshold) || 20;
+        if (highThreshold !== undefined) tank.highThreshold = Number(highThreshold) || 90;
 
         await tank.save();
+
+        // Publish configuration update to MQTT so the Relay node gets latest thresholds
+        const configPayload = {
+            lowThreshold: tank.lowThreshold,
+            highThreshold: tank.highThreshold,
+            tankHeight: tank.tankHeight,
+            automationEnabled: tank.automationEnabled
+        };
+        mqttClient.publish(`watermonitor/tank/${tank._id}/config`, JSON.stringify(configPayload), { retain: true });
+
         res.json(tank);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -45,12 +82,12 @@ const updateTankConfig = async (req, res) => {
 };
 
 // @desc    Toggle Motor manually
-// @route   POST /api/tank/motor
+// @route   POST /api/tank/motor/:id
 // @access  Private
 const toggleMotor = async (req, res) => {
     try {
         const { motorStatus } = req.body; // 'ON' or 'OFF'
-        const tank = await Tank.findOne({ userId: req.user._id });
+        const tank = await Tank.findOne({ _id: req.params.id, userId: req.user._id });
         if (!tank) return res.status(404).json({ message: 'Tank not found' });
 
         // When manual override is triggered, we might want to temporarily disable automation, 
@@ -100,11 +137,14 @@ const updateLevelESP32 = async (req, res) => {
         tank.waterVolume = Math.round((tank.currentLevel / 100) * tank.tankCapacityLiters);
         tank.lastUpdated = Date.now();
 
-        // Automation Logic
+        // Automation Logic using custom thresholds
         if (tank.automationEnabled) {
-            if (tank.currentLevel < 20 && tank.motorStatus === 'OFF') {
+            const low = tank.lowThreshold || 20;
+            const high = tank.highThreshold || 95;
+
+            if (tank.currentLevel < low && tank.motorStatus === 'OFF') {
                 tank.motorStatus = 'ON';
-            } else if (tank.currentLevel > 95 && tank.motorStatus === 'ON') {
+            } else if (tank.currentLevel > high && tank.motorStatus === 'ON') {
                 tank.motorStatus = 'OFF';
             }
         }
@@ -124,4 +164,4 @@ const updateLevelESP32 = async (req, res) => {
     }
 };
 
-module.exports = { getTank, toggleMotor, updateLevelESP32, updateTankConfig };
+module.exports = { getTanks, createTank, toggleMotor, updateLevelESP32, updateTankConfig };

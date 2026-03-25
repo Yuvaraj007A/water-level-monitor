@@ -26,6 +26,8 @@ erDiagram
         string userId FK
         float tankHeight "cm"
         float tankCapacityLiters "L"
+        float lowThreshold "%"
+        float highThreshold "%"
         int currentLevel "%"
         float waterVolume "L"
         string motorStatus "ON/OFF"
@@ -61,6 +63,8 @@ classDiagram
         +ObjectId userId
         +Number tankHeight
         +Number tankCapacityLiters
+        +Number lowThreshold
+        +Number highThreshold
         +Number currentLevel
         +String motorStatus
         +Boolean automationEnabled
@@ -119,10 +123,10 @@ sequenceDiagram
     participant F as React Frontend
 
     Note over S,R: Local Automation Path
-    S->>R: ESP-NOW (Distance Data)
-    alt Distance > Empty Threshold
+    S->>R: ESP-NOW (Level % & Distance)
+    alt Level <= lowThreshold
         R->>R: Motor ON (GPIO High)
-    else Distance < Full Threshold
+    else Level >= highThreshold
         R->>R: Motor OFF (GPIO Low)
     end
 
@@ -133,7 +137,11 @@ sequenceDiagram
     B->>M: Publish Motor Command (Sync)
     M->>R: Receive Command
     
-    Note over F,B: User View
+    Note over F,B: UI Calibration & Polling
+    F->>B: POST /api/tank (Update Thresholds)
+    B->>M: Publish Config Sync
+    M->>S: Sync tankHeight
+    M->>R: Sync low/highThresholds
     F->>B: GET /api/tank (Polling)
     B->>F: Latest Level & Motor Status
     F->>F: Update Dashboard UI
@@ -156,14 +164,14 @@ stateDiagram-v2
         [*] --> Pumping
     }
 
-    MotorOFF --> MotorON : Level < 20% (Auto)
+    MotorOFF --> MotorON : Level <= lowThreshold (Auto Sync)
     MotorOFF --> MotorON : User Toggle "ON" (Manual)
     
-    MotorON --> MotorOFF : Level > 95% (Auto)
+    MotorON --> MotorOFF : Level >= highThreshold (Auto Sync)
     MotorON --> MotorOFF : User Toggle "OFF" (Manual)
     
-    MotorON --> MotorOFF : Distance <= FullThreshold (Local Safety)
-    MotorOFF --> MotorON : Distance >= EmptyThreshold (Local AutoFill)
+    MotorON --> MotorOFF : Local Payload >= highThreshold (Offline Safety)
+    MotorOFF --> MotorON : Local Payload <= lowThreshold (Offline AutoFill)
 ```
 
 ---

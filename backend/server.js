@@ -8,6 +8,7 @@ require('./config/mqtt'); // Initialize MQTT client
 const authRoutes = require('./routes/authRoutes');
 const tankRoutes = require('./routes/tankRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
@@ -29,6 +30,7 @@ if (process.env.NODE_ENV === 'development') {
 app.use('/api/auth', authRoutes);
 app.use('/api/tank', tankRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // General Error Handler
 app.use((err, req, res, next) => {

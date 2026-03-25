@@ -6,14 +6,15 @@ const tankId = "60d5ecb8b392d71500000000"; // Dummy ID, replace with actual if b
 
 const publishTopic = `watermonitor/tank/${tankId}/level`;
 const subscribeTopic = `watermonitor/tank/${tankId}/motor`;
+const configTopic = `watermonitor/tank/${tankId}/config`;
 
 const client = mqtt.connect(mqttServer);
 
 client.on('connect', () => {
     console.log("Connected to MQTT Broker:", mqttServer);
-    client.subscribe(subscribeTopic, (err) => {
+    client.subscribe([subscribeTopic, configTopic], (err) => {
         if (!err) {
-            console.log("Subscribed to topic:", subscribeTopic);
+            console.log("Subscribed to topics:", subscribeTopic, ",", configTopic);
         } else {
             console.log("Failed to subscribe:", err);
         }
@@ -24,15 +25,24 @@ client.on('connect', () => {
 });
 
 client.on('message', (topic, message) => {
-    console.log(`\n[MQTT] Message arrived on topic: ${topic}. Message: ${message.toString()}`);
+    console.log(`\n[MQTT] Message arrived on topic: ${topic}`);
+    const msg = message.toString();
+
     if (topic === subscribeTopic) {
-        const msg = message.toString();
         if (msg === "ON") {
             console.log("Motor turned ON via MQTT");
             console.log("[Hardware Override] Relay PIN set to HIGH (Motor ON)");
         } else if (msg === "OFF") {
             console.log("Motor turned OFF via MQTT");
             console.log("[Hardware Override] Relay PIN set to LOW (Motor OFF)");
+        }
+    } else if (topic === configTopic) {
+        console.log("Config Update Received:", msg);
+        try {
+            const config = JSON.parse(msg);
+            console.log(`[Hardware Sync] New Thresholds: Low=${config.lowThreshold}%, High=${config.highThreshold}%`);
+        } catch (e) {
+            console.log("Failed to parse config JSON");
         }
     }
 });

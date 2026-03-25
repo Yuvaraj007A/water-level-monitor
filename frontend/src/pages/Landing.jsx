@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Droplets, Activity, Smartphone, BarChart3, ChevronRight, PlayCircle } from 'lucide-react';
+import { Droplets, Activity, Smartphone, BarChart3, ChevronRight, ShieldCheck, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import WaterBackground from '../components/Landing/WaterBackground';
 
@@ -89,10 +89,11 @@ const Landing = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.6 }}
-                    className="flex flex-col sm:flex-row gap-4 items-center justify-center"
+                    className="flex flex-col sm:flex-row gap-4 items-center justify-center transition-all"
                 >
                     <Link
                         to="/register"
+                        id="hero-register-btn"
                         className="group relative px-8 py-4 bg-primary rounded-2xl font-semibold text-white shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all flex items-center gap-2 overflow-hidden"
                     >
                         <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
@@ -101,6 +102,7 @@ const Landing = () => {
                     </Link>
                     <Link
                         to="/login"
+                        id="hero-login-btn"
                         className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-md rounded-2xl font-semibold text-white transition-all flex items-center gap-2"
                     >
                         Sign In to Dashboard
@@ -127,7 +129,7 @@ const Landing = () => {
                             {feature.icon}
                         </div>
                         <h3 className="text-xl font-bold mb-3 text-white">{feature.title}</h3>
-                        <p className="text-gray-400 leading-relaxed text-sm">
+                        <p className="text-gray-400 leading-relaxed text-sm font-medium">
                             {feature.description}
                         </p>
                     </motion.div>
@@ -143,28 +145,29 @@ const Landing = () => {
                         transition={{ duration: 0.8 }}
                         className="lg:w-1/2"
                     >
-                        <div className="inline-block px-4 py-1.5 mb-6 rounded-lg bg-primary/20 text-primary-light text-xs font-bold uppercase tracking-widest border border-primary/30">
+                        <div className="inline-block px-4 py-1.5 mb-6 rounded-lg bg-primary/20 text-accent text-xs font-bold uppercase tracking-widest border border-primary/30">
+                            <Zap size={14} className="inline mr-2" />
                             Why HydroGuard?
                         </div>
-                        <h2 className="text-3xl md:text-5xl font-extrabold mb-8 leading-tight">
+                        <h2 className="text-3xl md:text-5xl font-extrabold mb-8 leading-tight text-white">
                             A Complete <span className="text-primary italic">Intelligence Layer</span> For Your Infrastructure
                         </h2>
-                        <div className="space-y-6 text-gray-400 text-lg leading-relaxed">
+                        <div className="space-y-6 text-gray-400 text-lg leading-relaxed font-medium">
                             <p>
                                 Traditional float switches and manual checks are relics of the past. HydroGuard brings industrial-grade automation to your home or facility with a plug-and-play IoT solution.
                             </p>
                             <p>
-                                Our system uses ultrasonic wave-based measurement to determine volume with 99.8% accuracy. This data is transmitted securely to our cloud-native platform, where complex algorithms process it to provide you with insights you actually care about—like leakage detection, overflow prevention, and usage forecasting.
+                                Our system uses ultrasonic wave-based measurement to determine volume with 99.8% accuracy. This data is transmitted securely to our cloud-native platform, where complex algorithms process it to provide you with insights you actually care about.
                             </p>
                         </div>
 
                         <div className="mt-10 flex gap-8">
                             <div className="flex flex-col">
-                                <span className="text-3xl font-bold text-white">99%</span>
+                                <span className="text-3xl font-bold text-white">99.9%</span>
                                 <span className="text-xs text-gray-500 uppercase font-bold tracking-tighter">Accuracy Rate</span>
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-3xl font-bold text-white">&lt; 1s</span>
+                                <span className="text-3xl font-bold text-white">&lt; 0.1s</span>
                                 <span className="text-xs text-gray-500 uppercase font-bold tracking-tighter">Latency Range</span>
                             </div>
                             <div className="flex flex-col">
@@ -199,23 +202,23 @@ const Landing = () => {
                         <motion.div
                             animate={{ y: [0, -10, 0] }}
                             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                            className="absolute -top-10 -right-6 p-4 glass rounded-2xl shadow-xl w-40"
+                            className="absolute -top-10 -right-6 p-4 glass rounded-2xl shadow-xl w-40 z-20"
                         >
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                                 <span className="text-[10px] uppercase font-bold text-gray-400">Sensor Active</span>
                             </div>
-                            <div className="text-lg font-bold">ESP32-TX4</div>
+                            <div className="text-lg font-bold text-white flex items-center gap-2">ESP32-CORE <ShieldCheck size={16} className="text-primary" /></div>
                         </motion.div>
 
                         <motion.div
                             animate={{ y: [0, 10, 0] }}
                             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                            className="absolute -bottom-10 -left-6 p-4 glass rounded-2xl shadow-xl w-48"
+                            className="absolute -bottom-10 -left-6 p-4 glass rounded-2xl shadow-xl w-48 z-20"
                         >
                             <div className="text-[10px] uppercase font-bold text-accent mb-1 tracking-tighter">Weekly Consumption</div>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-2xl font-bold">1,240</span>
+                                <span className="text-2xl font-bold text-white">1,240</span>
                                 <span className="text-xs text-gray-400">Liters</span>
                             </div>
                         </motion.div>
@@ -224,9 +227,15 @@ const Landing = () => {
             </section>
 
             {/* Footer / CTA */}
-            <footer className="relative z-10 py-12 text-center border-t border-white/5">
-                <p className="text-gray-500 text-sm">
-                    &copy; 2026 HydroGuard Systems. Engineered for precision and efficiency.
+            <footer className="relative z-10 py-12 text-center border-t border-white/5 px-6">
+                <div className="max-w-2xl mx-auto mb-10">
+                    <h2 className="text-2xl font-bold text-white mb-4">Ready to secure your resources?</h2>
+                    <Link to="/register" id="footer-register-btn" className="px-8 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all inline-block">
+                        Build Your Instance
+                    </Link>
+                </div>
+                <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">
+                    &copy; 2026 HydroGuard Ecosystem &bull; All Rights Reserved
                 </p>
             </footer>
         </div>

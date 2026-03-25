@@ -6,6 +6,11 @@ const tankSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    name: {
+        type: String,
+        required: [true, 'Please add a tank name'],
+        default: 'Primary Tank'
+    },
     tankHeight: {
         type: Number,
         required: true,
@@ -32,6 +37,14 @@ const tankSchema = new mongoose.Schema({
     automationEnabled: {
         type: Boolean,
         default: true
+    },
+    lowThreshold: {
+        type: Number,
+        default: 20 // default 20%
+    },
+    highThreshold: {
+        type: Number,
+        default: 90 // default 90%
     },
     lastUpdated: {
         type: Date,

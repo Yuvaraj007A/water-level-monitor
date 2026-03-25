@@ -59,8 +59,9 @@ graph TD
 | Feature | Description |
 |---|---|
 | **Dual-Protocol IoT** | ESP32s communicate via **ESP-NOW** (local, offline-safe) and **MQTT** (cloud, remote control) simultaneously |
-| **Offline Automation** | If internet goes down, ESP-NOW keeps the relay auto-filling/stopping the tank based on thresholds |
-| **Tank Calibration** | Tank height, empty threshold, and full threshold are all configurable via a built-in web admin dashboard — no reflashing needed |
+| **Offline Automation** | Non-blocking architecture ensures ESP-NOW local safety triggers perfectly even if the internet drops |
+| **Captive Portal UI** | Both the Sensor and Relay feature a beautifully designed, glassmorphic built-in setup webpage for easy Wi-Fi configuration |
+| **Dynamic Calibration** | Thresholds, height, and capacity can be updated via the cloud dashboard and sync instantly to the devices |
 | **Real-Time Dashboard** | React UI with animated tank fill visualizer, live level %, and motor toggle |
 | **Historical Analytics** | Daily, weekly, and monthly water usage charts powered by Recharts |
 | **JWT Authentication** | Secure login/registration with protected routes |
@@ -177,6 +178,7 @@ node simulator.js
 |---|---|---|
 | `watermonitor/tank/{tankId}/level` | Sensor → Broker | `{"apiKey":"...","distance":42.5,"waterLevel":57.5,"tankHeight":100}` |
 | `watermonitor/tank/{tankId}/motor` | Broker → Relay | `ON` or `OFF` |
+| `watermonitor/tank/{tankId}/config` | Broker → Devices | `{"tankHeight":120, "lowThreshold":20, "highThreshold":90}` |
 
 ---
 
